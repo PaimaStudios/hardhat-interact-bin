@@ -193,7 +193,7 @@ function loadHardhatIgnitionContracts(hre, deploymentsPath, provider, chainId) {
 }
 async function printHelpfulInfo(ctx) {
     if (ctx.pickContract) {
-        console.log(chalk_1.default.gray.inverse(`${ctx.pickContract} => ${ctx.contracts[ctx.pickContract].address}`));
+        console.log(chalk_1.default.gray.inverse(`${ctx.pickContract} => ${ctx.contracts[ctx.pickContract].target}`));
     }
     console.log(chalk_1.default.gray(`  * Signer: ${ctx.impersonate ? ctx.impersonate : ctx.signer ? await ctx.signer.getAddress() : 'None'}`));
     console.log('\n');

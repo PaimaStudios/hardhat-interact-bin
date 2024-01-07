@@ -259,7 +259,7 @@ function loadHardhatIgnitionContracts(
 
 async function printHelpfulInfo(ctx: InteractContext) {
     if (ctx.pickContract) {
-        console.log(chalk.gray.inverse(`${ctx.pickContract} => ${ctx.contracts[ctx.pickContract!].address}`));
+        console.log(chalk.gray.inverse(`${ctx.pickContract} => ${ctx.contracts[ctx.pickContract!].target}`));
     }
     console.log(chalk.gray(`  * Signer: ${ctx.impersonate ? ctx.impersonate : ctx.signer ? await ctx.signer.getAddress() : 'None'}`));
     console.log('\n');
