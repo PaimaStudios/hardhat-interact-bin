@@ -1,0 +1,68 @@
+{
+  "name": "hardhat-interact",
+  "version": "0.3.0",
+  "description": "Execute commands on deployed contracts using a helpful TUI. Inspired by `hardhat interact` command on https://github.com/Synthetixio/synthetix",
+  "repository": "github:Synthetixio/hardhat-interact",
+  "author": "Daniel Beal",
+  "license": "MIT",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "hardhat",
+    "hardhat-plugin"
+  ],
+  "scripts": {
+    "lint:fix": "prettier --write 'src/**/*.{js,ts}' 'test/**/*.{js,ts}' && npm run lint -- --fix",
+    "lint": "eslint -c .eslintrc.js --ext .ts .  --ignore-path .gitignore",
+    "test": "mocha --exit --recursive 'test/**/*.test.ts'",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist/src/",
+    "src/",
+    "LICENSE",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@types/big.js": "^6.2.2",
+    "@types/chai": "^4.3.11",
+    "@types/fs-extra": "^11.0.4",
+    "@types/lodash": "^4.14.202",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^18.11.9",
+    "@types/prompts": "^2.4.9",
+    "@types/sinon": "^17.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.18.0",
+    "@typescript-eslint/parser": "^6.18.0",
+    "chai": "^4.4.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-prettier": "^5.1.2",
+    "hardhat": "^2.19.4",
+    "mocha": "^10.2.0",
+    "prettier": "3.1.1",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@synthetixio/wei": "^2.74.4",
+    "axios": "^1.6.5",
+    "chalk": "^4.0.0",
+    "ethers": "^6.9.2",
+    "fs-extra": "^11.2.0",
+    "lodash": "^4.17.21",
+    "prompts": "^2.4.2"
+  },
+  "peerDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "hardhat": "^2.0.0"
+  }
+}
