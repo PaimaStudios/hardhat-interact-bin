@@ -20,5 +20,11 @@ declare module 'hardhat/types/config' {
     interface ProjectPathsConfig {
         deployments: string;
     }
+    interface ProjectPathsUserConfig {
+        ignition?: string;
+    }
+    interface ProjectPathsConfig {
+        ignition?: string;
+    }
 }
 //# sourceMappingURL=type-extensions.d.ts.map

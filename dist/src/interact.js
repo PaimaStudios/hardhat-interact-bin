@@ -11,6 +11,7 @@ require("@nomicfoundation/hardhat-ethers");
 const fs_1 = require("fs");
 const config_1 = require("hardhat/config");
 const lodash_1 = __importDefault(require("lodash"));
+const path_1 = __importDefault(require("path"));
 const prompts_1 = __importDefault(require("prompts"));
 const staged_transactions_1 = __importDefault(require("./staged-transactions"));
 const utils_1 = require("./utils");
@@ -182,8 +183,12 @@ async function printHeader(ctx) {
     console.log(chalk_1.default.gray('================================================================================'));
     console.log('\n');
 }
-function loadContracts(hre, path, provider) {
-    const deployments = (0, utils_1.loadDeployments)(path, hre.network.name, true);
+function loadHardhatDeployContracts(hre, deploymentsPath, provider) {
+    const deployments = (0, utils_1.loadHardhatDeploy)(deploymentsPath, hre.network, true);
+    return lodash_1.default.mapValues(deployments, d => new hre.ethers.Contract(d.address, d.abi, provider));
+}
+function loadHardhatIgnitionContracts(hre, deploymentsPath, provider, chainId) {
+    const deployments = (0, utils_1.loadHardhatIgnition)(deploymentsPath, hre.network, chainId.toString());
     return lodash_1.default.mapValues(deployments, d => new hre.ethers.Contract(d.address, d.abi, provider));
 }
 async function printHelpfulInfo(ctx) {
@@ -201,17 +206,35 @@ async function printHelpfulInfo(ctx) {
 (0, config_1.subtask)('interact:load-contracts', 'Returns `ethers.Contract` objects which can be queried or executed against for this project')
     .addOptionalParam('provider', 'ethers.Provider which should be attached to the contract', null, config_1.types.any)
     .setAction(async ({ provider }, hre) => {
-    const deploymentPaths = [];
-    deploymentPaths.push(hre.config.paths.deployments);
-    if (hre.config.external.deployments && hre.config.external.deployments[hre.network.name]) {
-        deploymentPaths.push(...hre.config.external.deployments[hre.network.name]);
-    }
+    // hardhat-deploy and hardhat-ignition use different standards for representing deployed contracts on disk
+    // we try both to support whichever is being used
     let contracts = {};
-    for (const path of deploymentPaths) {
-        contracts = {
-            ...contracts,
-            ...loadContracts(hre, path, provider),
-        };
+    // hardhat-deploy
+    {
+        const deploymentPaths = [];
+        deploymentPaths.push(hre.config.paths.deployments);
+        if (hre.config.external.deployments && hre.config.external.deployments[hre.network.name]) {
+            deploymentPaths.push(...hre.config.external.deployments[hre.network.name]);
+        }
+        for (const deploymentPath of deploymentPaths) {
+            contracts = {
+                ...contracts,
+                ...loadHardhatDeployContracts(hre, deploymentPath, provider),
+            };
+        }
+    }
+    // hardhat-ignition
+    {
+        const chainId = Number(await hre.network.provider.request({
+            method: 'eth_chainId',
+        }));
+        if (hre.config.paths.ignition != null) {
+            const deploymentsPath = path_1.default.join(hre.config.paths.ignition, 'deployments');
+            contracts = {
+                ...contracts,
+                ...loadHardhatIgnitionContracts(hre, deploymentsPath, provider, chainId),
+            };
+        }
     }
     return contracts;
 });
@@ -233,8 +256,16 @@ async function printHelpfulInfo(ctx) {
 (0, config_1.subtask)('interact:pick-function', 'Shows an interactive UI to select a function to execute. The selected function signature is returned')
     .addParam('contract', 'Contract to select function from', null, config_1.types.any)
     .setAction(async ({ contract }) => {
-    const functionSignatures = lodash_1.default.keys(contract.functions).filter(f => f.indexOf('(') !== -1);
-    const choices = functionSignatures.sort().map(s => ({ title: s }));
+    const functionFragments = [];
+    for (const fragment of contract.interface.fragments) {
+        if (fragment instanceof ethers_1.ethers.FunctionFragment) {
+            functionFragments.push(fragment);
+        }
+    }
+    const choices = functionFragments
+        .map(fragment => fragment.format())
+        .sort()
+        .map(s => ({ title: s }));
     choices.unshift(PROMPT_BACK_OPTION);
     const { pickedFunction } = await prompts_1.default.prompt([
         {

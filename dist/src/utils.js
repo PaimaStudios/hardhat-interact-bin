@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadDeployments = exports.traverse = exports.normalizePath = exports.normalizePathArray = void 0;
+exports.loadHardhatIgnition = exports.loadHardhatDeploy = exports.traverse = exports.normalizePath = exports.normalizePathArray = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 function normalizePathArray(config, paths) {
@@ -52,9 +52,9 @@ const traverse = function (dir, result = [], topDir, filter // TODO any is Stats
     return result;
 };
 exports.traverse = traverse;
-function loadDeployments(deploymentsPath, subPath, onlyABIAndAddress, expectedChainId, truffleChainId) {
+function loadHardhatDeploy(deploymentsPath, network, onlyABIAndAddress, expectedChainId, truffleChainId) {
     const deploymentsFound = {};
-    const deployPath = path_1.default.join(deploymentsPath, subPath);
+    const deployPath = path_1.default.join(deploymentsPath, network.name);
     let filesStats;
     try {
         filesStats = (0, exports.traverse)(deployPath, undefined, undefined, name => !name.startsWith('.') && name !== 'solcInputs');
@@ -63,18 +63,18 @@ function loadDeployments(deploymentsPath, subPath, onlyABIAndAddress, expectedCh
         // console.log('no folder at ' + deployPath);
         return {};
     }
-    if (filesStats.length > 0) {
-        if (expectedChainId) {
-            const chainIdFilepath = path_1.default.join(deployPath, '.chainId');
-            if (fs_1.default.existsSync(chainIdFilepath)) {
-                const chainIdFound = fs_1.default.readFileSync(chainIdFilepath).toString().trim();
-                if (expectedChainId !== chainIdFound) {
-                    throw new Error(`Loading deployment in folder '${deployPath}' (with chainId: ${chainIdFound}) for a different chainId (${expectedChainId})`);
-                }
+    if (filesStats.length === 0)
+        return {};
+    if (expectedChainId) {
+        const chainIdFilepath = path_1.default.join(deployPath, '.chainId');
+        if (fs_1.default.existsSync(chainIdFilepath)) {
+            const chainIdFound = fs_1.default.readFileSync(chainIdFilepath).toString().trim();
+            if (expectedChainId !== chainIdFound) {
+                throw new Error(`Loading deployment in folder '${deployPath}' (with chainId: ${chainIdFound}) for a different chainId (${expectedChainId})`);
             }
-            else {
-                throw new Error("with hardhat-deploy >= 0.6 you are expected to create a '.chainId' file in the deployment folder");
-            }
+        }
+        else {
+            throw new Error("with hardhat-deploy >= 0.6 you are expected to create a '.chainId' file in the deployment folder");
         }
     }
     let fileNames = filesStats.map(a => a.relativePath);
@@ -113,5 +113,54 @@ function loadDeployments(deploymentsPath, subPath, onlyABIAndAddress, expectedCh
     }
     return deploymentsFound;
 }
-exports.loadDeployments = loadDeployments;
+exports.loadHardhatDeploy = loadHardhatDeploy;
+function loadHardhatIgnition(deploymentsPath, network, expectedChainId) {
+    const chainId = network.config.chainId ?? expectedChainId;
+    if (chainId == null)
+        return {};
+    const deployPath = path_1.default.join(deploymentsPath, `chain-${chainId}`);
+    // 1) get all deployed artifacts
+    const artifactsFound = {};
+    {
+        const artifacts = path_1.default.join(deployPath, 'artifacts');
+        let filesStats;
+        try {
+            filesStats = (0, exports.traverse)(artifacts, undefined, undefined, name => !name.endsWith('dbg.json'));
+        }
+        catch (e) {
+            // console.log('no folder at ' + deployPath);
+            return {};
+        }
+        if (filesStats.length === 0)
+            return {};
+        let fileNames = filesStats.map(a => a.relativePath);
+        fileNames = fileNames.sort((a, b) => {
+            if (a < b) {
+                return -1;
+            }
+            if (a > b) {
+                return 1;
+            }
+            return 0;
+        });
+        for (const fileName of fileNames) {
+            const deploymentName = path_1.default.parse(fileName).name;
+            const artifactFileName = path_1.default.join(artifacts, fileName);
+            const artifact = JSON.parse(fs_1.default.readFileSync(artifactFileName).toString());
+            artifactsFound[deploymentName] = { name: artifact.contractName, abi: artifact.abi };
+        }
+    }
+    // 2) get all deployments recorded
+    const deployments = JSON.parse(fs_1.default.readFileSync(path_1.default.join(deployPath, 'deployed_addresses.json')).toString());
+    const result = {};
+    for (const [identifier, address] of Object.entries(deployments)) {
+        if (!(identifier in artifactsFound)) {
+            continue;
+        }
+        const { name, abi } = artifactsFound[identifier];
+        result[name] = { address, abi };
+    }
+    return result;
+}
+exports.loadHardhatIgnition = loadHardhatIgnition;
 //# sourceMappingURL=utils.js.map
